@@ -66,6 +66,7 @@ removed_regressors = [
     "RadiusNeighborsRegressor", 
     "RegressorChain", 
     "VotingRegressor", 
+    "GammaRegressor"
 ]
 
 CLASSIFIERS = [
