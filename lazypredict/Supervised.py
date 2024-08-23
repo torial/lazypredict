@@ -588,6 +588,7 @@ class LazyRegressor:
 
         for name, model in tqdm(self.regressors):
             start = time.time()
+            print(f"Starting Model: {name} at {start}")
             try:
                 if "random_state" in model().get_params().keys():
                     pipe = Pipeline(
