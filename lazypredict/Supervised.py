@@ -51,7 +51,9 @@ removed_classifiers = [
     "VotingClassifier",
     "KNeighborsClassifier",
     "LabelPropagation",
-    "LabelSpreading"
+    "LabelSpreading",
+    "NuSVC",
+    "SVC"
 ]
 
 removed_regressors = [
