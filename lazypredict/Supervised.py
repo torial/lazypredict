@@ -69,7 +69,8 @@ removed_regressors = [
     "GammaRegressor",
     "GaussianProcessRegressor",
     "KNeighborsRegressor",
-    "KernelRidge"
+    "KernelRidge",
+    "NuSVR"
 ]
 
 CLASSIFIERS = [
