@@ -34,6 +34,7 @@ pd.set_option("display.precision", 2)
 pd.set_option("display.float_format", lambda x: "%.2f" % x)
 
 removed_classifiers = [
+    "CategoricalNB",
     "ClassifierChain",
     "ComplementNB",
     "GradientBoostingClassifier",
@@ -293,6 +294,8 @@ class LazyClassifier:
 
         for name, model in tqdm(self.classifiers):
             start = time.time()
+            print(f"Starting Model: {name} at {start}")
+            
             try:
                 if "random_state" in model().get_params().keys():
                     pipe = Pipeline(
