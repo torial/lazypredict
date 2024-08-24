@@ -49,7 +49,8 @@ removed_classifiers = [
     "OutputCodeClassifier",
     "RadiusNeighborsClassifier",
     "VotingClassifier",
-    "KNeighborsClassifier"
+    "KNeighborsClassifier",
+    "LabelPropagation"
 ]
 
 removed_regressors = [
