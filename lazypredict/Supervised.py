@@ -49,6 +49,7 @@ removed_classifiers = [
     "OutputCodeClassifier",
     "RadiusNeighborsClassifier",
     "VotingClassifier",
+    "KNeighborsClassifier"
 ]
 
 removed_regressors = [
