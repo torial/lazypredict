@@ -50,7 +50,8 @@ removed_classifiers = [
     "RadiusNeighborsClassifier",
     "VotingClassifier",
     "KNeighborsClassifier",
-    "LabelPropagation"
+    "LabelPropagation",
+    "LabelSpreading"
 ]
 
 removed_regressors = [
