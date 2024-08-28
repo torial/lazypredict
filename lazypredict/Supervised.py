@@ -389,9 +389,9 @@ class LazyClassifier:
                     "Time Taken": TIME,
                 }
             )
-        scores = scores.sort_values(by="Balanced Accuracy", ascending=False).set_index(
-            "Model"
-        )
+        scores = scores.sort_values(by="Balanced Accuracy", ascending=False) #.set_index(
+        #    "Model"
+        #)
 
         if self.predictions:
             predictions_df = pd.DataFrame.from_dict(predictions)
