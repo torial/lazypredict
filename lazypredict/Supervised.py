@@ -222,6 +222,7 @@ class LazyClassifier:
         predictions=False,
         random_state=42,
         classifiers="all",
+        roc_multi_class="raise"
     ):
         self.verbose = verbose
         self.ignore_warnings = ignore_warnings
@@ -230,6 +231,7 @@ class LazyClassifier:
         self.models = {}
         self.random_state = random_state
         self.classifiers = classifiers
+        self.roc_multi_class = roc_multi_class
 
     def fit(self, X_train, X_test, y_train, y_test):
         """Fit Classification algorithms to X_train and y_train, predict and score on X_test, y_test.
@@ -321,7 +323,7 @@ class LazyClassifier:
                 b_accuracy = balanced_accuracy_score(y_test, y_pred)
                 f1 = f1_score(y_test, y_pred, average="weighted")
                 try:
-                    roc_auc = roc_auc_score(y_test, y_pred)
+                    roc_auc = roc_auc_score(y_test, y_pred, multi_class=self.roc_multi_class)
                 except Exception as exception:
                     roc_auc = None
                     if self.ignore_warnings is False:
