@@ -325,6 +325,7 @@ class LazyClassifier:
                 try:
                     roc_auc = roc_auc_score(y_test, y_pred, multi_class=self.roc_multi_class)
                 except Exception as exception:
+                    print(f"{exception}: {y_test}\n{y_pred}")
                     roc_auc = None
                     if self.ignore_warnings is False:
                         print("ROC AUC couldn't be calculated for " + name)
