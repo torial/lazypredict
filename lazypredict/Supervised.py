@@ -19,6 +19,8 @@ from sklearn.metrics import (
     accuracy_score,
     balanced_accuracy_score,
     roc_auc_score,
+    precision_score,
+    recall_score,
     f1_score,
     r2_score,
     mean_squared_error,
@@ -259,6 +261,8 @@ class LazyClassifier:
         Accuracy = []
         B_Accuracy = []
         ROC_AUC = []
+        PRECISION = []
+        RECALL = []
         F1 = []
         names = []
         TIME = []
@@ -322,6 +326,8 @@ class LazyClassifier:
                 accuracy = accuracy_score(y_test, y_pred, normalize=True)
                 b_accuracy = balanced_accuracy_score(y_test, y_pred)
                 f1 = f1_score(y_test, y_pred, average="weighted")
+                precision = precision_score(y_test, y_pred, average="weighted")
+                recall = recall_score(y_test, y_pred, average="weighted")
                 try:
                     roc_auc = roc_auc_score(y_test, y_pred, multi_class=self.roc_multi_class)
                 except Exception as exception:
@@ -334,6 +340,8 @@ class LazyClassifier:
                 Accuracy.append(accuracy)
                 B_Accuracy.append(b_accuracy)
                 ROC_AUC.append(roc_auc)
+                PRECISION.append(precision)
+                RECALL.append(recall)
                 F1.append(f1)
                 TIME.append(time.time() - start)
                 if self.custom_metric is not None:
@@ -348,6 +356,8 @@ class LazyClassifier:
                                 "Balanced Accuracy": b_accuracy,
                                 "ROC AUC": roc_auc,
                                 "F1 Score": f1,
+                                "Precision": precision,
+                                "Recall": recall,
                                 self.custom_metric.__name__: custom_metric,
                                 "Time taken": time.time() - start,
                             }
@@ -360,6 +370,8 @@ class LazyClassifier:
                                 "Balanced Accuracy": b_accuracy,
                                 "ROC AUC": roc_auc,
                                 "F1 Score": f1,
+                                "Precision": precision,
+                                "Recall": recall,
                                 "Time taken": time.time() - start,
                             }
                         )
@@ -377,6 +389,8 @@ class LazyClassifier:
                     "Balanced Accuracy": B_Accuracy,
                     "ROC AUC": ROC_AUC,
                     "F1 Score": F1,
+                    "Precision": PRECISION,
+                    "Recall": RECALL,
                     "Time Taken": TIME,
                 }
             )
@@ -388,6 +402,8 @@ class LazyClassifier:
                     "Balanced Accuracy": B_Accuracy,
                     "ROC AUC": ROC_AUC,
                     "F1 Score": F1,
+                    "Precision": PRECISION,
+                    "Recall": RECALL,
                     self.custom_metric.__name__: CUSTOM_METRIC,
                     "Time Taken": TIME,
                 }
