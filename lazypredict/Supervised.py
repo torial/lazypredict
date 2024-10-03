@@ -153,7 +153,7 @@ def get_card_split(df, cols, n=11):
 # Helper class for performing classification
 
 class ClassifierMetrics:
-    def __init__(self, name, start, custom_metric, ignore_warnings):
+    def __init__(self, name, start, custom_metric):
         self.name = name
         self.accuracy = None
         self.b_accuracy = None
@@ -163,9 +163,8 @@ class ClassifierMetrics:
         self.roc_auc = None
         self.time = start
         self.custom_metric = custom_metric
-        self.ignore_warnings = ignore_warnings
 
-    def score(self, y_test, y_pred, roc_multi_class):
+    def score(self, y_test, y_pred, roc_multi_class, ignore_warnings):
         self.accuracy = accuracy_score(y_test, y_pred, normalize=True)
         self.b_accuracy = balanced_accuracy_score(y_test, y_pred)
         self.f1 = f1_score(y_test, y_pred, average="weighted")
@@ -176,7 +175,7 @@ class ClassifierMetrics:
         except Exception as exception:
             print(f"{exception}: {y_test}\n{y_pred}")
             self.roc_auc = None
-            if self.ignore_warnings is False:
+            if ignore_warnings is False:
                 print("ROC AUC couldn't be calculated for " + name)
                 print(exception)
         if self.custom_metric is not None:
@@ -389,8 +388,8 @@ class LazyClassifier:
                 mdl.fit(X_train, y_train)
                 self.models[name] = mdl
                 y_pred = mdl.predict(X_test)
-                metrics = ClassifierMetrics(name, start, self.custom_metric, self.ignore_warnings)
-                metrics.score(y_test, y_pred, self.roc_multi_class)
+                metrics = ClassifierMetrics(name, start, self.custom_metric)
+                metrics.score(y_test, y_pred, self.roc_multi_class, self.ignore_warnings)
 
                 METRICS.append(metrics)
                 
