@@ -304,15 +304,17 @@ class LazyClassifier:
         self.penalty = penalty
 
     def __get_model(self, model):
+        params = {}
         if 'penalty' in signature(model.__init__).parameters:
-            if 'random_state' in signature(model.__init__).parameters:
-                mdl = model(penalty=self.penalty, solver='saga', random_state=self.random_state)
-            else:
-                mdl = model(penalty=self.penalty, solver='saga')
-        elif 'random_state' in signature(model.__init__).parameters:
-            mdl = model(random_state=self.random_state)
-        else:
-            mdl = model()
+            params["penalty"] = self.penalty
+
+        if 'random_state' in signature(model.__init__).parameters:
+            params["random_state"] = self.random_state
+
+        if 'solver' in signature(model.__init__).parameters:
+            params["solver"] = 'saga'
+            
+        mdl = model(**params)
 
         return mdl
 
@@ -401,7 +403,7 @@ class LazyClassifier:
                     print(exception)
 
         metrics_list = [vars(metric) for metric in METRICS]
-        scores = pd.DataFrame(metrics_list)
+        scores = pd.DataFrame.from_dict(metrics_list)
         scores.rename(columns=ClassifierMetrics.get_display_columns(), inplace=True)
         print(scores.columns)
         scores = scores.sort_values(by="Balanced Accuracy", ascending=False) 
