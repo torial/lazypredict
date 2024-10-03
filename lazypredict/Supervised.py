@@ -8,6 +8,7 @@ import pandas as pd
 from tqdm import tqdm
 import datetime
 import time
+from inspect import signature
 from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
@@ -151,6 +152,64 @@ def get_card_split(df, cols, n=11):
 
 # Helper class for performing classification
 
+class ClassifierMetrics:
+    def __init__(self, name, start, custom_metric):
+        self.name
+        self.accuracy = None
+        self.b_accuracy = None
+        self.f1 = None
+        self.precision = None
+        self.recall = None
+        self.roc_auc = None
+        self.time = start
+        self.custom_metric = custom_metric
+
+    def score(self, y_test, y_pred):
+        self.accuracy = accuracy_score(y_test, y_pred, normalize=True)
+        self.b_accuracy = balanced_accuracy_score(y_test, y_pred)
+        self.f1 = f1_score(y_test, y_pred, average="weighted")
+        self.precision = precision_score(y_test, y_pred, average="weighted")
+        self.recall = recall_score(y_test, y_pred, average="weighted")
+        try:
+            self.roc_auc = roc_auc_score(y_test, y_pred, multi_class=self.roc_multi_class)
+        except Exception as exception:
+            print(f"{exception}: {y_test}\n{y_pred}")
+            self.roc_auc = None
+            if self.ignore_warnings is False:
+                print("ROC AUC couldn't be calculated for " + name)
+                print(exception)
+        if self.custom_metric is not None:
+            self.custom_metric = self.custom_metric(y_test, y_pred)
+            
+        self.time = time.time() - self.time
+
+    def get_printable_object(self):
+        return {
+                "Model": self.name,
+                "Accuracy": self.accuracy,
+                "Balanced Accuracy": self.b_accuracy,
+                "ROC AUC": self.roc_auc,
+                "F1 Score": self.f1,
+                "Precision": self.precision,
+                "Recall": self.recall,
+                "Custom": self.custom_metric,
+                "Time Taken": self.time,
+            }
+
+    @staticmethod
+    def get_display_columns(cls):
+        return {
+                "name": "Model",
+                "accuracy": "Accuracy",
+                "b_accuracy": "Balanced Accuracy",
+                "roc_auc": "ROC AUC",
+                "f1":"F1 Score",
+                "precision":"Precision",
+                "recall":"Recall",
+                "custom_metric": "Custom",
+                "time":"Time Taken",
+                }
+        
 
 class LazyClassifier:
     """
@@ -168,6 +227,13 @@ class LazyClassifier:
         When set to True, the predictions of all the models models are returned as dataframe.
     classifiers : list, optional (default="all")
         When function is provided, trains the chosen classifier(s).
+    penalty: str, optional (default=None)
+        Only models that accept a penalty constructor parameter will have a penalty applied.
+        
+        None - no penalty added
+        'l1' - Add a L1 penalty term
+        'l2' - Add a L2 penalty term
+        'elasticnet' - Add a L1 + L2 penalty term.  
 
     Examples
     --------
@@ -224,7 +290,8 @@ class LazyClassifier:
         predictions=False,
         random_state=42,
         classifiers="all",
-        roc_multi_class="raise"
+        roc_multi_class="raise",
+        penalty=None
     ):
         self.verbose = verbose
         self.ignore_warnings = ignore_warnings
@@ -234,6 +301,20 @@ class LazyClassifier:
         self.random_state = random_state
         self.classifiers = classifiers
         self.roc_multi_class = roc_multi_class
+        self.penalty = penalty
+
+    def __get_model(model):
+        if 'penalty' in signature(model.__init__).parameters:
+            if 'random_state' in signature(model.__init__).parameters:
+                mdl = model(penalty=self.penalty, solver='saga', random_state=self.random_state)
+            else:
+                mdl = model(penalty=self.penalty, solver='saga')
+        elif 'random_state' in signature(model.__init__).parameters:
+            mdl = model(random_state=self.random_state)
+        else:
+            mdl = model()
+
+        return mdl
 
     def fit(self, X_train, X_test, y_train, y_test):
         """Fit Classification algorithms to X_train and y_train, predict and score on X_test, y_test.
@@ -258,18 +339,8 @@ class LazyClassifier:
         predictions : Pandas DataFrame
             Returns predictions of all the models in a Pandas DataFrame.
         """
-        Accuracy = []
-        B_Accuracy = []
-        ROC_AUC = []
-        PRECISION = []
-        RECALL = []
-        F1 = []
-        names = []
-        TIME = []
+        METRICS = []
         predictions = {}
-
-        if self.custom_metric is not None:
-            CUSTOM_METRIC = []
 
         if isinstance(X_train, np.ndarray):
             X_train = pd.DataFrame(X_train)
@@ -303,115 +374,37 @@ class LazyClassifier:
                 print(exception)
                 print("Invalid Classifier(s)")
 
+        X_train = preprocessor.fit_transform(X_train)
+        X_test = preprocessor.fit_transform(X_test)
+        
         for name, model in tqdm(self.classifiers):
             start = time.time()
             print(f"Starting Model: {name} at {start}")
             
             try:
-                if "random_state" in model().get_params().keys():
-                    pipe = Pipeline(
-                        steps=[
-                            ("preprocessor", preprocessor),
-                            ("classifier", model(random_state=self.random_state)),
-                        ]
-                    )
-                else:
-                    pipe = Pipeline(
-                        steps=[("preprocessor", preprocessor), ("classifier", model())]
-                    )
+                mdl = self.__get_model(model)                
+                mdl.fit(X_train, y_train)
+                self.models[name] = mdl
+                y_pred = mdl.predict(X_test)
+                metrics = ClassifierMetrics(name, start, self.custom_metric)
+                metrics.score(y_test, y_pred)
 
-                pipe.fit(X_train, y_train)
-                self.models[name] = pipe
-                y_pred = pipe.predict(X_test)
-                accuracy = accuracy_score(y_test, y_pred, normalize=True)
-                b_accuracy = balanced_accuracy_score(y_test, y_pred)
-                f1 = f1_score(y_test, y_pred, average="weighted")
-                precision = precision_score(y_test, y_pred, average="weighted")
-                recall = recall_score(y_test, y_pred, average="weighted")
-                try:
-                    roc_auc = roc_auc_score(y_test, y_pred, multi_class=self.roc_multi_class)
-                except Exception as exception:
-                    print(f"{exception}: {y_test}\n{y_pred}")
-                    roc_auc = None
-                    if self.ignore_warnings is False:
-                        print("ROC AUC couldn't be calculated for " + name)
-                        print(exception)
-                names.append(name)
-                Accuracy.append(accuracy)
-                B_Accuracy.append(b_accuracy)
-                ROC_AUC.append(roc_auc)
-                PRECISION.append(precision)
-                RECALL.append(recall)
-                F1.append(f1)
-                TIME.append(time.time() - start)
-                if self.custom_metric is not None:
-                    custom_metric = self.custom_metric(y_test, y_pred)
-                    CUSTOM_METRIC.append(custom_metric)
+                METRICS.append(metrics)
+                
                 if self.verbose > 0:
-                    if self.custom_metric is not None:
-                        print(
-                            {
-                                "Model": name,
-                                "Accuracy": accuracy,
-                                "Balanced Accuracy": b_accuracy,
-                                "ROC AUC": roc_auc,
-                                "F1 Score": f1,
-                                "Precision": precision,
-                                "Recall": recall,
-                                self.custom_metric.__name__: custom_metric,
-                                "Time taken": time.time() - start,
-                            }
-                        )
-                    else:
-                        print(
-                            {
-                                "Model": name,
-                                "Accuracy": accuracy,
-                                "Balanced Accuracy": b_accuracy,
-                                "ROC AUC": roc_auc,
-                                "F1 Score": f1,
-                                "Precision": precision,
-                                "Recall": recall,
-                                "Time taken": time.time() - start,
-                            }
-                        )
+                    print(metrics.get_printable_object())
                 if self.predictions:
                     predictions[name] = y_pred
             except Exception as exception:
                 if self.ignore_warnings is False:
                     print(name + " model failed to execute")
                     print(exception)
-        if self.custom_metric is None:
-            scores = pd.DataFrame(
-                {
-                    "Model": names,
-                    "Accuracy": Accuracy,
-                    "Balanced Accuracy": B_Accuracy,
-                    "ROC AUC": ROC_AUC,
-                    "F1 Score": F1,
-                    "Precision": PRECISION,
-                    "Recall": RECALL,
-                    "Time Taken": TIME,
-                }
-            )
-        else:
-            scores = pd.DataFrame(
-                {
-                    "Model": names,
-                    "Accuracy": Accuracy,
-                    "Balanced Accuracy": B_Accuracy,
-                    "ROC AUC": ROC_AUC,
-                    "F1 Score": F1,
-                    "Precision": PRECISION,
-                    "Recall": RECALL,
-                    self.custom_metric.__name__: CUSTOM_METRIC,
-                    "Time Taken": TIME,
-                }
-            )
-        scores = scores.sort_values(by="Balanced Accuracy", ascending=False) #.set_index(
-        #    "Model"
-        #)
 
+        metrics_list = [vars(metric) for metric in METRICS]
+        scores = pd.DataFrame(metrics_list)
+        scores.rename(columns=ClassifierMetrics.get_display_columns(), inplace=True)
+        scores = scores.sort_values(by="Balanced Accuracy", ascending=False) 
+        
         if self.predictions:
             predictions_df = pd.DataFrame.from_dict(predictions)
         return scores, predictions_df if self.predictions is True else scores
