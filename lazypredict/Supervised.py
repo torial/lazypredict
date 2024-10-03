@@ -165,14 +165,14 @@ class ClassifierMetrics:
         self.custom_metric = custom_metric
         self.ignore_warnings = ignore_warnings
 
-    def score(self, y_test, y_pred):
+    def score(self, y_test, y_pred, roc_multi_class):
         self.accuracy = accuracy_score(y_test, y_pred, normalize=True)
         self.b_accuracy = balanced_accuracy_score(y_test, y_pred)
         self.f1 = f1_score(y_test, y_pred, average="weighted")
         self.precision = precision_score(y_test, y_pred, average="weighted")
         self.recall = recall_score(y_test, y_pred, average="weighted")
         try:
-            self.roc_auc = roc_auc_score(y_test, y_pred, multi_class=self.roc_multi_class)
+            self.roc_auc = roc_auc_score(y_test, y_pred, multi_class=roc_multi_class)
         except Exception as exception:
             print(f"{exception}: {y_test}\n{y_pred}")
             self.roc_auc = None
@@ -390,7 +390,7 @@ class LazyClassifier:
                 self.models[name] = mdl
                 y_pred = mdl.predict(X_test)
                 metrics = ClassifierMetrics(name, start, self.custom_metric, self.ignore_warnings)
-                metrics.score(y_test, y_pred)
+                metrics.score(y_test, y_pred, self.roc_multi_class)
 
                 METRICS.append(metrics)
                 
