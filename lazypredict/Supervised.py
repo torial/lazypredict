@@ -303,7 +303,7 @@ class LazyClassifier:
         self.roc_multi_class = roc_multi_class
         self.penalty = penalty
 
-    def __get_model(model):
+    def __get_model(self, model):
         if 'penalty' in signature(model.__init__).parameters:
             if 'random_state' in signature(model.__init__).parameters:
                 mdl = model(penalty=self.penalty, solver='saga', random_state=self.random_state)
