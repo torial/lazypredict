@@ -197,7 +197,7 @@ class ClassifierMetrics:
             }
 
     @staticmethod
-    def get_display_columns(cls):
+    def get_display_columns():
         return {
                 "name": "Model",
                 "accuracy": "Accuracy",
