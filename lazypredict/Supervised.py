@@ -403,6 +403,7 @@ class LazyClassifier:
         metrics_list = [vars(metric) for metric in METRICS]
         scores = pd.DataFrame(metrics_list)
         scores.rename(columns=ClassifierMetrics.get_display_columns(), inplace=True)
+        print(scores.columns)
         scores = scores.sort_values(by="Balanced Accuracy", ascending=False) 
         
         if self.predictions:
