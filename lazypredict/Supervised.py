@@ -154,7 +154,7 @@ def get_card_split(df, cols, n=11):
 
 class ClassifierMetrics:
     def __init__(self, name, start, custom_metric):
-        self.name
+        self.name = name
         self.accuracy = None
         self.b_accuracy = None
         self.f1 = None
