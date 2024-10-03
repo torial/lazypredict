@@ -153,7 +153,7 @@ def get_card_split(df, cols, n=11):
 # Helper class for performing classification
 
 class ClassifierMetrics:
-    def __init__(self, name, start, custom_metric):
+    def __init__(self, name, start, custom_metric, ignore_warnings):
         self.name = name
         self.accuracy = None
         self.b_accuracy = None
@@ -163,6 +163,7 @@ class ClassifierMetrics:
         self.roc_auc = None
         self.time = start
         self.custom_metric = custom_metric
+        self.ignore_warnings = ignore_warnings
 
     def score(self, y_test, y_pred):
         self.accuracy = accuracy_score(y_test, y_pred, normalize=True)
@@ -388,7 +389,7 @@ class LazyClassifier:
                 mdl.fit(X_train, y_train)
                 self.models[name] = mdl
                 y_pred = mdl.predict(X_test)
-                metrics = ClassifierMetrics(name, start, self.custom_metric)
+                metrics = ClassifierMetrics(name, start, self.custom_metric, self.ignore_warnings)
                 metrics.score(y_test, y_pred)
 
                 METRICS.append(metrics)
