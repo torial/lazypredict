@@ -9,7 +9,7 @@ from tqdm import tqdm
 import datetime
 import time
 from inspect import signature
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.impute import SimpleImputer, MissingIndicator
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
@@ -23,11 +23,11 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    r2_score,
-    mean_squared_error,
+    r2_score
 )
 import warnings
 import xgboost
+import traceback
 
 # import catboost
 import lightgbm
@@ -104,7 +104,8 @@ CLASSIFIERS.append(("LGBMClassifier", lightgbm.LGBMClassifier))
 # CLASSIFIERS.append(('CatBoostClassifier',catboost.CatBoostClassifier))
 
 numeric_transformer = Pipeline(
-    steps=[("imputer", SimpleImputer(strategy="mean")), ("scaler", StandardScaler())]
+    steps=[("imputer", SimpleImputer(strategy="mean")), 
+           ("scaler", StandardScaler())]
 )
 
 categorical_transformer_low = Pipeline(
@@ -116,7 +117,7 @@ categorical_transformer_low = Pipeline(
 
 categorical_transformer_high = Pipeline(
     steps=[
-        ("imputer", SimpleImputer(strategy="constant", fill_value="missing")),
+        ("imputer",  SimpleImputer(strategy="constant", fill_value="missing")),
         # 'OrdianlEncoder' Raise a ValueError when encounters an unknown value. Check https://github.com/scikit-learn/scikit-learn/pull/13423
         ("encoding", OrdinalEncoder()),
     ]
@@ -176,7 +177,7 @@ class ClassifierMetrics:
             print(f"{exception}: {y_test}\n{y_pred}")
             self.roc_auc = None
             if ignore_warnings is False:
-                print("ROC AUC couldn't be calculated for " + name)
+                print("ROC AUC couldn't be calculated for " + self.name)
                 print(exception)
         if self.custom_metric is not None:
             self.custom_metric = self.custom_metric(y_test, y_pred)
@@ -305,15 +306,27 @@ class LazyClassifier:
 
     def __get_model(self, model):
         params = {}
-        if 'penalty' in signature(model.__init__).parameters:
+        parameters = signature(model.__init__).parameters
+        if 'penalty' in parameters and self.penalty:
             params["penalty"] = self.penalty
+            if 'l1_ratio' in parameters and self.penalty=='elasticnet':
+                params["l1_ratio"] = 0.5
 
-        if 'random_state' in signature(model.__init__).parameters:
+        if 'random_state' in parameters and self.random_state:
             params["random_state"] = self.random_state
 
-        if 'solver' in signature(model.__init__).parameters:
-            params["solver"] = 'saga'
-            
+        if 'solver' in parameters:
+            if self.penalty=='elasticnet':
+                params["solver"] = 'saga'
+            else:
+                params["solver"] = 'liblinear'
+
+        if 'fit_intercept' in parameters:
+            params['fit_intercept'] = False
+
+        if 'C' in parameters:
+            params['C'] = 0.25
+
         mdl = model(**params)
 
         return mdl
@@ -368,8 +381,10 @@ class LazyClassifier:
         else:
             try:
                 temp_list = []
-                for classifier in self.classifiers:
-                    full_name = (classifier.__name__, classifier)
+                for classifier_name, classifier in CLASSIFIERS:
+                    if classifier_name not in self.classifiers:
+                        continue
+                    full_name = (classifier_name, classifier)
                     temp_list.append(full_name)
                 self.classifiers = temp_list
             except Exception as exception:
@@ -386,7 +401,7 @@ class LazyClassifier:
             try:
                 mdl = self.__get_model(model)                
                 mdl.fit(X_train, y_train)
-                self.models[name] = mdl
+                self.models[name] = make_pipeline(preprocessor, mdl)
                 y_pred = mdl.predict(X_test)
                 metrics = ClassifierMetrics(name, start, self.custom_metric)
                 metrics.score(y_test, y_pred, self.roc_multi_class, self.ignore_warnings)
@@ -401,6 +416,7 @@ class LazyClassifier:
                 if self.ignore_warnings is False:
                     print(name + " model failed to execute")
                     print(exception)
+                    print(traceback.format_exc())
 
         metrics_list = [vars(metric) for metric in METRICS]
         scores = pd.DataFrame.from_dict(metrics_list)
