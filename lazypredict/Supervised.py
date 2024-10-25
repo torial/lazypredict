@@ -10,7 +10,7 @@ import datetime
 import time
 from inspect import signature
 from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.impute import SimpleImputer, MissingIndicator
+from sklearn.impute import SimpleImputer, MissingIndicator, KNNImputer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.utils import all_estimators
@@ -23,7 +23,8 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
     f1_score,
-    r2_score
+    r2_score,
+    mean_squared_error,
 )
 import warnings
 import xgboost
@@ -391,8 +392,10 @@ class LazyClassifier:
                 print(exception)
                 print("Invalid Classifier(s)")
 
+        print(f"Before Preprocessing: X_train: {X_train.shape}")
         X_train = preprocessor.fit_transform(X_train)
-        X_test = preprocessor.fit_transform(X_test)
+        X_test = preprocessor.transform(X_test)
+        print(f"After Preprocessing: X_train: {X_train.shape}")
         
         for name, model in tqdm(self.classifiers):
             start = time.time()
